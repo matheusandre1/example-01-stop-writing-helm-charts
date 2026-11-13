@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, test and validate chart
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      # Runs the tests (PostgreSQL through Dev Services) and generates the chart
+      - name: Build and test
+        run: ./mvnw -B -ntp verify
+
+      - name: Lint the generated chart
+        run: helm lint target/helm/kubernetes/orders-api
+
+      - name: Render the chart with production-like values
+        run: |
+          helm template orders target/helm/kubernetes/orders-api \
+            --set app.replicas=4 \
+            --set app.memoryLimit=1Gi \
+            --set app.host=orders.mycompany.com > /dev/null
+
+      - name: Schema must reject fewer than 2 replicas
+        run: |
+          if helm template orders target/helm/kubernetes/orders-api --set app.replicas=1 > /dev/null 2>&1; then
+            echo "::error::The chart accepted app.replicas=1, but the schema should reject it"
+            exit 1
+          fi

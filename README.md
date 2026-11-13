@@ -1,5 +1,7 @@
 # Stop writing Helm charts
 
+[![CI](https://github.com/matheusandre1/example-01-stop-writing-helm-charts/actions/workflows/ci.yml/badge.svg)](https://github.com/matheusandre1/example-01-stop-writing-helm-charts/actions/workflows/ci.yml)
+
 Example project for the Quarkus Club post about the
 [Quarkus Helm](https://github.com/quarkiverse/quarkus-helm) extension.
 
@@ -22,6 +24,15 @@ written by hand: the extension generates it during the build from
 - JDK 21 and Docker
 - [Helm](https://helm.sh/docs/intro/install/)
 - [minikube](https://minikube.sigs.k8s.io/) and `kubectl`, only for the cluster steps
+
+## Run the tests
+
+```bash
+./mvnw verify
+```
+
+The tests start a PostgreSQL container through Dev Services, so Docker must be
+running.
 
 ## Generate the chart
 
