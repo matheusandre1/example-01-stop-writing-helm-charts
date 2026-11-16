@@ -23,7 +23,9 @@ written by hand: the extension generates it during the build from
 
 - JDK 21 and Docker
 - [Helm](https://helm.sh/docs/intro/install/)
-- [minikube](https://minikube.sigs.k8s.io/) and `kubectl`, only for the cluster steps
+- `kubectl` and a local Kubernetes cluster, such as
+  [minikube](https://minikube.sigs.k8s.io/) or [kind](https://kind.sigs.k8s.io/),
+  only for the cluster steps
 
 ## Run the tests
 
@@ -60,20 +62,32 @@ helm template orders orders-api --set app.replicas=1
 
 ![Validating the chart](vhs/validate.gif)
 
-## Install on minikube
+## Install on a local cluster
 
-Build the image straight into minikube's Docker daemon, so no registry is
-needed. `image-pull-policy=IfNotPresent` makes Kubernetes use that local image
-instead of trying to pull it.
+No registry is needed: build the container image locally, then load it into
+the cluster. `image-pull-policy=IfNotPresent` makes Kubernetes use that local
+image instead of trying to pull it.
 
 ```bash
-minikube start
-eval $(minikube docker-env)
-
 ./mvnw clean package \
     -Dquarkus.container-image.build=true \
     -Dquarkus.kubernetes.image-pull-policy=IfNotPresent
+```
 
+Load the image with the tool of your cluster. The image name is the
+`app.image` value in `target/helm/kubernetes/orders-api/values.yaml`.
+
+```bash
+# minikube
+minikube image load docker.io/<your-user>/orders-api:1.0.0-SNAPSHOT
+
+# kind
+kind load docker-image docker.io/<your-user>/orders-api:1.0.0-SNAPSHOT
+```
+
+Then deploy PostgreSQL and install the chart:
+
+```bash
 kubectl apply -f k8s/postgres.yaml
 kubectl rollout status deployment/postgres
 
@@ -113,3 +127,6 @@ its Docker image, so nothing has to be installed:
 vhs/record.sh vhs/validate.tape
 vhs/record.sh vhs/install.tape   # needs the cluster, the image and PostgreSQL
 ```
+
+`vhs/record.sh` mounts `~/.minikube` so the container can reach a minikube
+cluster. With another cluster, adjust that mount to match your kubeconfig.
